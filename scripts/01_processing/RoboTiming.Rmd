@@ -1,0 +1,121 @@
+---
+title: "settlement_robot"
+author: "Kenzie cooke"
+date: "2025-09-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+This is text
+```{r load libraries}
+library(tidyverse)
+library(ggplot2)
+library(stringr)
+library(readxl)
+library(lubridate)
+
+setwd("~/Documents/Rprojects/settlement_trial/scripts/01_processing")
+```
+
+```{r data read in and cleaning}
+roboPhDatRaw <- read_csv("../../data/raw/dose.csv")%>%
+  separate_wider_delim(s.temperature.outputs, delim =",", names=paste0("t", seq(1:6)), too_many = "merge") %>%
+  separate_wider_delim(s.pH.outputs, delim =",", names=paste0("p", seq(1:30)), too_many = "merge",
+                       too_few="align_start") %>%
+  dplyr::select(1:7, tempText=t3, phText=p17, picoPhText=p26, 
+                phOffsetText=p17, rawPhText=p28, picoRText=p19) %>%
+  separate(tempText, sep=":", into=c('name', 'temp')) %>%
+  separate(phText, sep=":", into=c('name', 'pH')) %>%
+  mutate(across(c(temp, pH), as.numeric))%>%
+  mutate(timestampLocal=ymd_hms(Timestamp.Local, tz="EST"))%>%
+  dplyr::select(timestampLocal,3:7, temp, pH)
+
+#Append treatment labels to vessels
+treatments <- tibble(
+  vessel = as.character(c(3,4,9,13,17,19,21,
+             1,2,7,8,12,16,28,
+             5,6,11,18,22,23,25,
+             10,14,15,20,24,26,27)),
+  treat = c("a", "a", "a", "a", "a", "a", "a",
+            "b", "b", "b", "b", "b", "b", "b",
+            "c", "c", "c", "c", "c", "c", "c",
+            "d", "d", "d", "d", "d", "d", "d"))
+
+# Append species labels to vessels 
+species <- tibble(
+  vessel = as.character(c(4, 1, 25, 14,
+                          3,19,21,2,12,16,5,6,18,10,24,27,
+                          9,13,17,7,8,28,11,22,23,15,20,26)),
+  sp = c("na", "na", "na", "na",
+         "ofav", "ofav", "ofav", "ofav", "ofav", "ofav",
+         "ofav", "ofav", "ofav", "ofav", "ofav", "ofav",
+         "pstr", "pstr", "pstr", "pstr", "pstr", "pstr",
+         "pstr", "pstr", "pstr", "pstr", "pstr", "pstr"))
+
+roboPhDatRaw <- roboPhDatRaw %>%
+  left_join(treatments, by = "vessel")
+
+roboPhDatRaw <- roboPhDatRaw %>%
+  left_join(species, by = "vessel")
+
+# Filter to start of experiment
+roboPhDatRaw%>%
+  filter(timestampLocal>ymd_hm("2025/08/21 16:00", tz="EST"))%>%
+ggplot(., aes(timestampLocal, pH))+
+  geom_line(aes(color=treat))
+```
+
+```{r logging loops}
+
+timing <- read_delim("../../data/raw/starRobot.txt", col_names = c("timestampUtc", "timestampLocal", "position"))%>%
+  mutate(timestampLocal=ymd_hms(timestampLocal, tz="EST"))%>%
+  filter(str_detect(position, "LOOP NUMBER"))%>%
+  mutate(timeDiff=as.numeric((timestampLocal-lag(timestampLocal))/dminutes(1)))
+  #filter out startdates
+  #filter(timestampLocal>ymd_hm("2025/08/01 12:00", tz="EST"))
+  
+
+```
+
+```{r vessel pH over time}
+
+# PSTR
+roboPhDatRaw%>%
+  filter(timestampLocal>ymd_hm("2025/08/21 16:00", tz="EST") &
+           timestampLocal < ymd_hm("2025/09/04 12:00", tz = "EST"))%>%
+  #filter(treat == "a") %>%
+  filter(sp %in% c("pstr", "na")) %>%
+ggplot(., aes(timestampLocal, pH))+
+  geom_line() +
+  facet_wrap(~treat, scales = "free_y") +
+  labs(title = "PSTR")
+
+
+ # OFAV
+roboPhDatRaw%>%
+  filter(timestampLocal>ymd_hm("2025/08/23 16:00", tz="EST") &
+           timestampLocal < ymd_hm("2025/09/01 09:00", tz = "EST"))%>%
+  #filter(treat == "a") %>%
+  filter(sp %in% c("ofav", "na")) %>%
+ggplot(., aes(timestampLocal, pH))+
+  geom_line() +
+  facet_wrap(~treat, scales = "free_y") +
+  labs(title = "OFAV")
+ 
+
+ # Combined
+roboPhDatRaw%>%
+  filter(timestampLocal>ymd_hm("2025/08/23 16:00", tz="EST") &
+           timestampLocal < ymd_hm("2025/09/04 12:00", tz = "EST"))%>%
+  #filter(treat == "a") %>%
+  filter(sp %in% c("pstr", "na")) %>%
+ggplot(., aes(timestampLocal, pH))+
+  geom_line(aes(color = sp)) +
+  facet_wrap(~treat, scales = "free_y") +
+  labs(title = "PSTR")
+ 
+
+```
+

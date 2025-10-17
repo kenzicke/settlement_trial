@@ -1,0 +1,72 @@
+---
+title: "PAM_pipeline"
+author: "Kenzie Cooke"
+format: html
+---
+
+## Import and clean PAM data
+
+This pipeline will import, organize, and clean output from the Wallz IPAM machine. 
+
+## Step 1: Organize your files into main directory
+
+Download all of the data and put it in Project wd. I like to have one folder for each PAM timepoint
+with file structure "01_pam", "02_pam" ... "0N_pam". Then tp folder will have one csv for every picture
+with naming conventions of "1.csv", "2.csv", etc. 
+
+```{r}
+#| output: false
+# Load libraries 
+library(tidyverse)
+library(readr)
+library(janitor)
+```
+
+## Step 2: Create function to import and transform csv data
+
+Create a function that will take output csv from IPAM machine and tidy it.
+
+```{r}
+importYII <- function(path){
+  data <- read_delim(path, delim = ";") |> 
+  clean_names() |> 
+  pivot_longer(cols = starts_with("y_ii_"),
+               names_to = "AOI",
+               values_to = "YII") |> 
+  mutate(
+    AOI = parse_number(AOI),
+    photo = str_extract(basename(path), "\\d+(?=\\.csv)")) |> 
+  select(date, photo, AOI, YII) 
+  
+  return(data)
+}
+```
+
+## Step 3: Process data
+
+Create vector list for each pam timepoint and use function to process all at once into new df
+```{r}
+#| output: false
+files_01 <- list.files("data/raw/pam/01_pam/data", full.names = TRUE, pattern = "*.csv")
+pam_01 <- map_df(files_01, importYII)
+```
+
+Repeat for every timepoint 
+
+```{r}
+#| output: false
+files_02 <- list.files("data/raw/pam/02_pam/data", full.names = TRUE, pattern = "*.csv")
+pam_02 <- map_df(files_02, importYII)
+
+files_03 <- list.files("data/raw/pam/03_pam/data", full.names = TRUE, pattern = "*.csv")
+pam_03 <- map_df(files_03, importYII)
+
+files_04 <- list.files("data/raw/pam/04_pam/data", full.names = TRUE, pattern = "*.csv")
+pam_04 <- map_df(files_04, importYII)
+
+```
+
+```{r}
+glimpse(pam_04)
+```
+

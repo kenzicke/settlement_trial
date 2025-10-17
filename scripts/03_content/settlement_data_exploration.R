@@ -16,7 +16,7 @@ ggplot(filter_data, aes(x = treat,
               height = 0) +
   facet_wrap(vars(species))
 
-filter_data$rep = factor(filter_data$rep)
+#filter_data$rep = factor(filter_data$rep)
 
 ggplot(filter_data, aes(x = treat,
                         y = count_init,
@@ -24,8 +24,10 @@ ggplot(filter_data, aes(x = treat,
   geom_boxplot(aes(alpha = 0.4)) +
   geom_jitter( width = 0.4,
                height = 0,
-               aes(color = rep)) +
-  facet_wrap(~species)
+               aes(color = as.factor(rep))) +
+  facet_wrap(~species) +
+  guides(alpha = "none") +
+  labs(color = "replicate")
 
 #Plot initial settlement count by treatment, wrap species
 ggplot(filter_data, aes(x = treat,
@@ -33,14 +35,16 @@ ggplot(filter_data, aes(x = treat,
   stat_summary(geom = "pointrange",
                color = "black",
                size = 0.8) +
-  geom_jitter(aes(color = rep),
+  geom_jitter(aes(color = as.factor(rep),
               alpha = 0.4,
               width = 0.4,
-              height = 0) +
+              height = 0)) +
   facet_wrap(~species) +
   labs(title = "Initial settlement count",
        x = "Treatment",
-       y = "Initial count")
+       y = "Initial count") +
+  guides(alpha = "none") +
+  labs(color = "tile replicate")
 
 
 #Plot final settlement count by treatment, wrap species
@@ -52,7 +56,7 @@ ggplot(filter_data, aes(x = treat,
   geom_jitter(alpha = 0.4,
               width = 0.4,
               height = 0,
-              aes(color = rep)) +
+              aes(color = as.factor(rep))) +
   facet_wrap(~species) +
   labs(title = "Final settlement count",
        x = "Treatment",
@@ -68,7 +72,8 @@ ggplot(filter_data, aes(x = treat,
   geom_jitter(aes(alpha = 0.4,
                   width = 0.4,
                   height = 0,
-                  color = rep)) +
+                  color = as.factor(rep),
+                  shape = species)) +
   labs(title = "Final settlement count",
        x = "Treatment",
        y = "Final count")
@@ -108,7 +113,9 @@ filter_data <- filter_data %>%
   mutate(prop_settle = count_init / 20,
          perc_settle = 100 * prop_settle)
 
-ggplot(filter_data, aes(x = treat,
+filter_data_pstr <- filter_data[filter_data$species == "pstr",]
+
+ggplot(filter_data_pstr, aes(x = treat,
                         y = perc_settle)) +
   stat_summary(geom = "pointrange",
                color = "black",
@@ -116,10 +123,11 @@ ggplot(filter_data, aes(x = treat,
   geom_jitter(alpha = 0.4,
               width = 0.4,
               height = 0,
-              aes(color = rep)) +
+              aes(color = as.factor(rep))) +
   facet_wrap(~species) +
   labs(color = "tile replicate",
        x = "treatment",
        y = "% settlement",
-       title = "% settled out of 20")
+       title = "% settled out of 20") +
+  theme_bw()
 
